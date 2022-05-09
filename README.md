@@ -25,7 +25,7 @@ roslaunch rotors_gazebo autonomous_landing.launch world_name:=landing_moving #fo
 ```
 
 ## Papers for Reading
-A general manual for working with RotorS Simulator can be found in : [RotorS – A Modular Gazebo MAV Simulator Framework](https://www.researchgate.net/publication/309291237), you can read specific parts of its right now for commanding the drone using rostopics, and how to make your own controller. The latter can be done by comment out the lee controller node of ypur launch file.
+A general manual for working with RotorS Simulator can be found in : [RotorS – A Modular Gazebo MAV Simulator Framework](https://www.researchgate.net/publication/309291237), you can read specific parts of its right now for commanding the drone using rostopics, and how to make your own controller. The latter can be done by commenting out the lee controller node of ypur launch file,
 ```
 <node name="lee_position_controller_node" pkg="rotors_control" type="lee_position_controller_node" output="screen">
   <rosparam command="load" file="$(find rotors_gazebo)/resource/lee_controller_$(arg mav_name).yaml" />
@@ -33,6 +33,7 @@ A general manual for working with RotorS Simulator can be found in : [RotorS –
   <remap from="odometry" to="odometry_sensor1/odometry" />
 </node>
  ````
+ and adding your own controller node created in rotors_control package.
 
 Task Specific Papers:
 - Alireza Mohammadi, Yi Feng, Cong Zhang, Samir Rawashdeh, and Stanley Baek, [Vision-based Autonomous Landing Using an MPC-controlled Micro UAV on a Moving Platform](https://ieeexplore.ieee.org/document/9214043)
