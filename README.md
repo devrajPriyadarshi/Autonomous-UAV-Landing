@@ -1,6 +1,6 @@
 # Autonomous-UAV-Landing
 
-'''
+'''bash
 cd catkin_ws/src
 
 #for SSH
@@ -9,8 +9,8 @@ git clone git@github.com:devrajPriyadarshi/Autonomous-UAV-Landing.git
 
 ##Addition files :
 - This repo contains landing_static.world and landing_moving.world in rotors_gazebo/worlds folder.
-- to launch the autonomous landing use
-'''
+- to launch the autonomous landing use :
+'''bash
 roslaunch rotors_gazebo autonomous_landing.launch #this by default loads the static world
 
 #OR
