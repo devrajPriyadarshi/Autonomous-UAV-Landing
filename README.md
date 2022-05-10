@@ -14,7 +14,7 @@ git clone https://github.com/devrajPriyadarshi/Autonomous-UAV-Landing.git
 
 ## Addition files
 - This repo contains landing_static.world and landing_moving.world in rotors_gazebo/worlds folder.
-- A firefly drone with a downwards camera.
+- A firefly drone with a downwards camera (to be added soon).
 To launch the autonomous landing use :
 ```bash
 roslaunch rotors_gazebo autonomous_landing.launch #this by default loads the static world
