@@ -6,7 +6,7 @@
   <arg name="log_file" default="$(arg mav_name)" />
   <arg name="debug" default="false"/>
   <arg name="gui" default="true"/>
-  <arg name="paused" default="true"/>
+  <arg name="paused" default="false"/>
   <!-- The following line causes gzmsg and gzerr messages to be printed to the console
       (even when Gazebo is started through roslaunch) -->
   <arg name="verbose" default="false"/>
@@ -21,6 +21,9 @@
     <arg name="verbose" value="$(arg verbose)"/>
   </include>
 
+  <node pkg="rotors_gazebo" type="launch_pad_hovering.py" name="launch_pad_hover_node" 
+      if="$(eval arg('world_name') == 'landing_moving')"/>
+
   <group ns="$(arg mav_name)">
     <include file="$(find rotors_gazebo)/launch/spawn_mav.launch">
       <arg name="mav_name" value="$(arg mav_name)" />
@@ -31,11 +34,11 @@
     </include>
 
     <!-- Edit the below node to add a custom controller -->
-    <node name="lee_position_controller_node" pkg="rotors_control" type="lee_position_controller_node" output="screen">
+    <!-- <node name="lee_position_controller_node" pkg="rotors_control" type="lee_position_controller_node" output="screen">
       <rosparam command="load" file="$(find rotors_gazebo)/resource/lee_controller_$(arg mav_name).yaml" />
       <rosparam command="load" file="$(find rotors_gazebo)/resource/$(arg mav_name).yaml" />
       <remap from="odometry" to="odometry_sensor1/odometry" />
-    </node>
+    </node> -->
 
     <!-- Get the UAV to take off by adding an additional node here -->
     <!-- <node   XXXXXXXXXXXXXXXXXXXXXXXXXXXX         >
