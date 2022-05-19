@@ -24,6 +24,8 @@ roslaunch rotors_gazebo autonomous_landing.launch #this by default loads the sta
 roslaunch rotors_gazebo autonomous_landing.launch moving_base:=true #for moving platform
 ```
 
+To make your own script with custom mav setup and scripts duplicate the trial branch.
+
 ## Papers for Reading
 A general manual for working with RotorS Simulator can be found in : [RotorS – A Modular Gazebo MAV Simulator Framework](https://www.researchgate.net/publication/309291237), you can read specific parts of its right now for commanding the drone using rostopics, and how to make your own controller. The latter can be done by commenting out the lee controller node of ypur launch file,
 ```
