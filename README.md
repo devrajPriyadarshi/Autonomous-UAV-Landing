@@ -36,6 +36,7 @@ A general manual for working with RotorS Simulator can be found in : [RotorS –
  and adding your own controller node created in rotors_control package.
 
 Task Specific Papers:
+- Pengkai Ru and Kamesh Subbarao, [Nonlinear Model Predictive Control for Unmanned Aerial Vehicles](https://mdpi-res.com/d_attachment/aerospace/aerospace-04-00031/article_deploy/aerospace-04-00031-v2.pdf?version=1497855375)
 - Alireza Mohammadi, Yi Feng, Cong Zhang, Samir Rawashdeh, and Stanley Baek, [Vision-based Autonomous Landing Using an MPC-controlled Micro UAV on a Moving Platform](https://ieeexplore.ieee.org/document/9214043)
 - Yi Feng, Cong Zhang, Stanley Baek, Samir Rawashdeh and Alireza Mohammadi, [Autonomous Landing of a UAV on a Moving Platform Using Model Predictive Control](https://mdpi-res.com/d_attachment/drones/drones-02-00034/article_deploy/drones-02-00034.pdf?version=1539336596)
 - Aleix Paris, Brett T. Lopez, and Jonathan P. How, [Dynamic Landing of an Autonomous Quadrotor on a Moving Platform in Turbulent Wind Conditions.](https://arxiv.org/pdf/1909.11071.pdf)
