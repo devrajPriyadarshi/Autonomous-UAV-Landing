@@ -21,7 +21,7 @@ roslaunch rotors_gazebo autonomous_landing.launch #this by default loads the sta
 
 #OR
 
-roslaunch rotors_gazebo autonomous_landing.launch world_name:=landing_moving #for moving platform
+roslaunch rotors_gazebo autonomous_landing.launch moving_base:=true #for moving platform
 ```
 
 ## Papers for Reading

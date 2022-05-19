@@ -7,6 +7,7 @@
   <arg name="debug" default="false"/>
   <arg name="gui" default="true"/>
   <arg name="paused" default="false"/>
+  <arg name="moving_base" default="false"/>
   <!-- The following line causes gzmsg and gzerr messages to be printed to the console
       (even when Gazebo is started through roslaunch) -->
   <arg name="verbose" default="false"/>
@@ -22,7 +23,7 @@
   </include>
 
   <node pkg="rotors_gazebo" type="launch_pad_hovering.py" name="launch_pad_hover_node" 
-      if="$(eval arg('world_name') == 'landing_moving')"/>
+      if="$(arg moving_base)"/>
 
   <group ns="$(arg mav_name)">
     <include file="$(find rotors_gazebo)/launch/spawn_mav.launch">
