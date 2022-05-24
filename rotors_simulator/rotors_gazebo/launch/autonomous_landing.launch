@@ -25,6 +25,10 @@
   <node pkg="rotors_gazebo" type="launch_pad_hovering.py" name="launch_pad_hover_node" 
       if="$(arg moving_base)"/>
 
+  <node pkg="rotors_control" type="controller_check.py" name="controller_check_node">
+    <remap from="command/pose" to="$(arg mav_name)/command/pose" />
+  </node>
+
   <group ns="$(arg mav_name)">
     <include file="$(find rotors_gazebo)/launch/spawn_mav.launch">
       <arg name="mav_name" value="$(arg mav_name)" />
