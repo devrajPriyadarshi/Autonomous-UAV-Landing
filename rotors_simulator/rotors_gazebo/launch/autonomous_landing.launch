@@ -40,17 +40,18 @@
     </include>
 
     <!-- Edit the below node to add a custom controller -->
-    <node name="lee_position_controller_node" pkg="rotors_control" type="lee_position_controller_node" output="screen">
+    <!-- <node name="lee_position_controller_node" pkg="rotors_control" type="lee_position_controller_node" output="screen">
       <rosparam command="load" file="$(find rotors_gazebo)/resource/lee_controller_$(arg mav_name).yaml" />
       <rosparam command="load" file="$(find rotors_gazebo)/resource/$(arg mav_name).yaml" />
       <remap from="odometry" to="odometry_sensor1/odometry" />
-    </node>
-
-    <!-- Get the UAV to take off by adding an additional node here -->
-    <!-- <node   XXXXXXXXXXXXXXXXXXXXXXXXXXXX         >
-    
     </node> -->
 
+    <!-- Get the UAV to take off by adding an additional node here -->
+    <node name="Linear_MPC_controller_node" pkg="rotors_control" type="linear_mpc.py" output="screen">
+      <rosparam command="load" file="$(find rotors_gazebo)/resource/$(arg mav_name).yaml" />
+      <remap from="odometry" to="odometry_sensor1/odometry" />
+    </node>
+    
     <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
     <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" />
   </group>

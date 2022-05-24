@@ -44,20 +44,28 @@ class linearMPC():
 
         self.firstOdomCallback = False
 
-        while(self.firstOdomCallback):
-            # rospy.loginfo("MPC controller got first call back.")
+        print("INIT DONE")
+
+        while(not self.firstOdomCallback):
+            rospy.loginfo("WAITING FOR FIRST ODOM CALLBACK")
+            rospy.sleep(2)
             self.initParam()
-            self.firstOdomCallback = False
+
+        rospy.loginfo("GOT FIRST ODOM CALLBACK")
 
     def initParam(self):
 
+        self.rate = rospy.Rate(20)
+
         self.mass = rospy.get_param("~mass")
-        self.Jx = rospy.get_param("~inertial/xx")
-        self.Jy = rospy.get_param("~inertial/yy")
-        self.Jz = rospy.get_param("~inertial/zz")
+        self.Jx = rospy.get_param("~inertia/xx")
+        self.Jy = rospy.get_param("~inertia/yy")
+        self.Jz = rospy.get_param("~inertia/zz")
         self.I = np.array([ [self.Jx, 0, 0],
                             [0, self.Jy, 0],
                             [0, 0, self.Jz]])
+
+        print("mass = ", self.mass)
         Kf = []
         Km = []
         ang = []
@@ -84,16 +92,19 @@ class linearMPC():
                 Kf.append(RKfValue)
             else:
                 self.no_of_rotors = i
+                break
+
+        print(self.no_of_rotors)
         
         inp_r = np.zeros(( 4, self.no_of_rotors))
-
-        self.r_inp = inp_r.T @ np.linalg.inv(inp_r @ inp_r.T)
 
         for i in range(self.no_of_rotors):
             inp_r[0][i] = Kf[i]
             inp_r[1][i] = Kf[i]*L[i]*sin(ang[i])
             inp_r[2][i] = Kf[i]*L[i]*cos(ang[i])*(-1)
             inp_r[3][i] = Km[i]*dir[i]*(-1)
+
+        self.r_inp = inp_r.T @ np.linalg.inv(inp_r @ inp_r.T)
 
         dt = self.dt
         m = self.mass
@@ -213,31 +224,38 @@ class linearMPC():
 
     def odomCallback(self, data):
         
+        # print("HEYYUAGSDJASDA")
+
         self.firstOdomCallback = True
         self.currPos = np.array([data.pose.pose.position.x, data.pose.pose.position.y, data.pose.pose.position.z])
         self.currVel = np.array([data.twist.twist.linear.x, data.twist.twist.linear.y, data.twist.twist.linear.z])
-        self.currAtt = np.array(euler_from_quaternion(data.pose.pose.orientation))
+        self.currAtt = np.array(euler_from_quaternion([data.pose.pose.orientation.x, data.pose.pose.orientation.y, data.pose.pose.orientation.z, data.pose.pose.orientation.w]))
         self.currAng = np.array([data.twist.twist.angular.x, data.twist.twist.angular.y, data.twist.twist.angular.z])
 
+        # print("self X = ", self.x)
+        # print("currPose = ", self.currPos)
+
         self.x[0][0] = self.currPos[0]
-        self.x[0][1] = self.currPos[1]
-        self.x[0][2] = self.currPos[2]
-        self.x[0][3] = self.currVel[0]
-        self.x[0][4] = self.currVel[1]
-        self.x[0][5] = self.currVel[2]
-        self.x[0][6] = self.currAtt[0]
-        self.x[0][7] = self.currAtt[1]
-        self.x[0][8] = self.currAtt[2]
-        self.x[0][9] = self.currAng[0]
-        self.x[0][10] = self.currAng[1]
-        self.x[0][11] = self.currAng[2]
+        self.x[1][0] = self.currPos[1]
+        self.x[2][0] = self.currPos[2]
+        self.x[3][0] = self.currVel[0]
+        self.x[4][0] = self.currVel[1]
+        self.x[5][0] = self.currVel[2]
+        self.x[6][0] = self.currAtt[0]
+        self.x[7][0] = self.currAtt[1]
+        self.x[8][0] = self.currAtt[2]
+        self.x[9][0] = self.currAng[0]
+        self.x[10][0] = self.currAng[1]
+        self.x[11][0] = self.currAng[2]
 
     def poseCallback(self, data):
 
         self.desPos = np.array([data.pose.position.x, data.pose.position.y, data.pose.position.z])
-        self.desAtt = np.array(euler_from_quaternion(data.pose.orientation))
+        self.desAtt = np.array(euler_from_quaternion([data.pose.orientation.x, data.pose.orientation.y, data.pose.orientation.z, data.pose.orientation.w]))
 
         self.xT = np.array([[self.desPos[0]], [self.desPos[1]], [self.desPos[2]], [0], [0], [0], [0], [0], [self.desAtt[2]], [0], [0], [0]])
+
+        # print("self xT", self.xT)
 
     def publish(self):
 
@@ -253,35 +271,52 @@ class linearMPC():
         Qy = cp.Constant(np.eye(300))
         Qu = cp.Constant(np.eye(100))
 
-        rate = rospy.Rate(20) # 20 Hz
+        # print("UT SHAPE = ",self.UT.shape)
+        # print("UTlb SHAPE = ",self.UTlb.shape)
+        # print("UTub SHAPE = ",self.UTub.shape)
 
         while(not rospy.is_shutdown()):
             dx = cp.Constant(self.xT - self.x)
 
+            # print("dx = ", dx)
+
             dX = Acap@dx + Bcap@dU
             dY = Ccap@dX
 
-            cost = cp.Minimize( dY.T@Qy@dY + dU.T@Qu@dU + dY[0][-1]*Qy[-1][-1]*dY[0][-1])
-            const = [UT + dU >= self.UTlb, UT + dU <= self.UTub]
+            cost = cp.Minimize( dY.T@Qy@dY + dU.T@Qu@dU )
+            # cost = cp.Minimize( cp.norm(dY) + cp.norm(dU) )
+            const = [self.UTlb - UT <= dU , dU <= self.UTub - UT]
 
             prob = cp.Problem(cost, const)
+            # print("Prob is DCP? :", prob.is_dcp())
 
-            prob.solve()
+            result = prob.solve()
+            # print("dU = ", dU.value)
+            dUop = np.array(dU.value)
 
-            uOptimal = self.uT + dU.value[0][0:3]
+            uOptimal = self.uT + np.array([ [dUop[4][0]], [dUop[5][0]], [dUop[6][0]], [dUop[7][0]]])
 
             self.cvtRotorSpeed(uOptimal)
 
-            rate.sleep()
+            self.rate.sleep()
 
     def cvtRotorSpeed(self, u):
         
+        print("optimal u = ", u)
+
         Omg_sq = self.r_inp @ u
+
+        print("Omg_sq  =", Omg_sq)
+        for i in range(self.no_of_rotors):
+            if Omg_sq[i][0] < 0:
+                Omg_sq[i][0] = 0
         Omg = np.sqrt(Omg_sq)
 
-        actuatorMsg = Actuators(angular_velocities=[ Omg[0][0], Omg[0][1], Omg[0][2], Omg[0][3]])
+        # print("Omg = ", Omg)
 
-        self.rotorPub(actuatorMsg)        
+        actuatorMsg = Actuators(angular_velocities=[ Omg[0][0], Omg[1][0], Omg[2][0], Omg[3][0]])
+
+        self.rotorPub.publish(actuatorMsg)        
 
 if __name__ == "__main__":
     
