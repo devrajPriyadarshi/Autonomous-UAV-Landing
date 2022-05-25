@@ -13,24 +13,28 @@ class controllerCheck():
 
     def publish(self):
 
+        rate = rospy.Rate(50)
+
         rospy.sleep(7)
         rospy.loginfo("Controller Check Beginning.")
 
         rospy.sleep(3)
         pose = PoseStamped( pose = Pose( position = Vector3(0,0,4), orientation=Quaternion(0,0,0,1) ))
-        self.posePub.publish(pose)
+        while(not rospy.is_shutdown()):
+            self.posePub.publish(pose)
+            rate.sleep()
         
-        rospy.sleep(3)
-        pose = PoseStamped( pose = Pose( position = Vector3(2,0,4), orientation=Quaternion(0,0,0,1) ))
-        self.posePub.publish(pose)
+        # rospy.sleep(3)
+        # pose = PoseStamped( pose = Pose( position = Vector3(2,0,4), orientation=Quaternion(0,0,0,1) ))
+        # self.posePub.publish(pose)
         
-        rospy.sleep(3)
-        pose = PoseStamped( pose = Pose( position = Vector3(2,2,4), orientation=Quaternion(0,0,0,1) ))
-        self.posePub.publish(pose)
+        # rospy.sleep(3)
+        # pose = PoseStamped( pose = Pose( position = Vector3(2,2,4), orientation=Quaternion(0,0,0,1) ))
+        # self.posePub.publish(pose)
         
-        rospy.sleep(3)
-        pose = PoseStamped( pose = Pose( position = Vector3(0,0,4), orientation=Quaternion(0,0,0,1) ))
-        self.posePub.publish(pose)
+        # rospy.sleep(3)
+        # pose = PoseStamped( pose = Pose( position = Vector3(0,0,4), orientation=Quaternion(0,0,0,1) ))
+        # self.posePub.publish(pose)
         
 
 if __name__ == "__main__":

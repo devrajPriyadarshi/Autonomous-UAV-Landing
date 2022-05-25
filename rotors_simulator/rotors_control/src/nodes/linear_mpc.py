@@ -36,7 +36,7 @@ class linearMPC():
 
         self.dt = 0.05 # delta tile
 
-        self.g = 9.81 # G
+        self.g = -9.81 # G
 
         self.N = 25 # Control Horizon
 
@@ -158,7 +158,7 @@ class linearMPC():
                             [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]])
 
         self.xT = np.array([[self.currPos[0]], [self.currPos[1]], [self.currPos[2]], [0], [0], [0], [self.currAtt[0]], [self.currAtt[1]], [self.currAtt[2]], [0], [0], [0]])
-        self.uT = np.array([[m*g], [0], [0], [0]])        
+        self.uT = np.array([[abs(m*g)], [0], [0], [0]])        
 
         At = []
         Bt = []
@@ -186,19 +186,18 @@ class linearMPC():
             Ct.append(Ctt)
             uTt.append([self.uT])
 
-            #upper and lower bounds on u
-            uub.append([self.uT + np.array( [[10],[3],[3],[3]] ) ])
-            ulb.append([self.uT - np.array( [[10],[3],[3],[3]] ) ])
+            #upper and lower bounds on dU
+            uub.append([np.array( [[10],[10],[10],[10]] ) ])
+            ulb.append([-1*np.array( [[10],[10],[10],[10]] ) ])
 
 
 
         self.Acap = np.array(np.bmat(At))
         self.Bcap = np.array(np.bmat(Bt))
         self.Ccap = np.array(np.bmat(Ct))
-        self.UT= np.array(np.bmat(uTt))
 
-        self.UTub = np.array(np.bmat(uub))
-        self.UTlb = np.array(np.bmat(ulb))
+        self.dUub = np.array(np.bmat(uub))
+        self.dUlb = np.array(np.bmat(ulb))
 
         # print("A = ")
         # print(self.A)
@@ -263,38 +262,47 @@ class linearMPC():
 
         dU = cp.Variable(4*self.M, 1)
 
-        UT = cp.Constant(self.UT)
+        # UT = cp.Constant(self.UT)
         Acap = cp.Constant(self.Acap)
         Bcap = cp.Constant(self.Bcap)
         Ccap = cp.Constant(self.Ccap)
-
-        Qy = cp.Constant(np.eye(300))
-        Qu = cp.Constant(np.eye(100))
+  
+        Qy = np.eye(12*self.M)
+        Qu = np.eye(4*self.M)
 
         # print("UT SHAPE = ",self.UT.shape)
         # print("UTlb SHAPE = ",self.UTlb.shape)
         # print("UTub SHAPE = ",self.UTub.shape)
 
         while(not rospy.is_shutdown()):
-            dx = cp.Constant(self.xT - self.x)
+
+            dx = cp.Constant(self.x - self.xT)
+
+            print("dx = ", dx)
 
             # print("dx = ", dx)
 
             dX = Acap@dx + Bcap@dU
             dY = Ccap@dX
 
-            cost = cp.Minimize( dY.T@Qy@dY + dU.T@Qu@dU )
-            # cost = cp.Minimize( cp.norm(dY) + cp.norm(dU) )
-            const = [self.UTlb - UT <= dU , dU <= self.UTub - UT]
+            cost = cp.Minimize( 1*cp.quad_form(dY, Qy) + 1*cp.quad_form(dU, Qu) )
+            # cost = cp.Minimize( 10*cp.norm(dY) + 0.1*cp.norm(dU) )
+            # const = [self.UTlb - UT <= dU , dU <= self.UTub - UT]
+            const = [self.dUlb <= dU , dU <= self.dUub]
+
+
 
             prob = cp.Problem(cost, const)
             # print("Prob is DCP? :", prob.is_dcp())
 
             result = prob.solve()
-            # print("dU = ", dU.value)
+            print("dX = ", dX)
+            print("dY = ", dY)
+            print("dU = ", [dU.value[0][0], dU.value[1][0], dU.value[2][0], dU.value[3][0]])
+            
             dUop = np.array(dU.value)
 
-            uOptimal = self.uT + np.array([ [dUop[4][0]], [dUop[5][0]], [dUop[6][0]], [dUop[7][0]]])
+            uOptimal = self.uT + np.array([[dUop[0][0]], [dUop[1][0]], [dUop[2][0]], [dUop[3][0]]])
 
             self.cvtRotorSpeed(uOptimal)
 
@@ -306,13 +314,16 @@ class linearMPC():
 
         Omg_sq = self.r_inp @ u
 
-        print("Omg_sq  =", Omg_sq)
+        # print("Omg_sq  =", Omg_sq)
         for i in range(self.no_of_rotors):
             if Omg_sq[i][0] < 0:
-                Omg_sq[i][0] = 0
+                Omg_sq[i][0] = 0 
+            if Omg_sq[i][0] > 838**2:
+                Omg_sq[i][0] = 838**2
+            
         Omg = np.sqrt(Omg_sq)
 
-        # print("Omg = ", Omg)
+        print("Omg = ", Omg)
 
         actuatorMsg = Actuators(angular_velocities=[ Omg[0][0], Omg[1][0], Omg[2][0], Omg[3][0]])
 
