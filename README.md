@@ -39,8 +39,8 @@ A general manual for working with RotorS Simulator can be found in : [RotorS –
 
 Task Specific Papers:
 
-- For modelling : (link)[https://downloads.hindawi.com/journals/aaa/2015/916864.pdf]
-- For cost func : (link)[https://www.researchgate.net/profile/Maidul-Islam-11/publication/321450669_Dynamics_and_control_of_quadcopter_using_linear_model_predictive_control_approach/links/5dfe239b4585159aa48feee9/Dynamics-and-control-of-quadcopter-using-linear-model-predictive-control-approach.pdf?origin=publication_detail]
+- For modelling : [link](https://downloads.hindawi.com/journals/aaa/2015/916864.pdf)
+- For cost func : [link](https://www.researchgate.net/profile/Maidul-Islam-11/publication/321450669_Dynamics_and_control_of_quadcopter_using_linear_model_predictive_control_approach/links/5dfe239b4585159aa48feee9/Dynamics-and-control-of-quadcopter-using-linear-model-predictive-control-approach.pdf?origin=publication_detail)
 
 - Pengkai Ru and Kamesh Subbarao, [Nonlinear Model Predictive Control for Unmanned Aerial Vehicles](https://mdpi-res.com/d_attachment/aerospace/aerospace-04-00031/article_deploy/aerospace-04-00031-v2.pdf?version=1497855375)
 - Alireza Mohammadi, Yi Feng, Cong Zhang, Samir Rawashdeh, and Stanley Baek, [Vision-based Autonomous Landing Using an MPC-controlled Micro UAV on a Moving Platform](https://ieeexplore.ieee.org/document/9214043)
