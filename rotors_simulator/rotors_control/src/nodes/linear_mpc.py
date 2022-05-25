@@ -4,7 +4,7 @@ from math import sin, cos
 import rospy
 import numpy as np
 import cvxpy as cp
-from numpy.linalg import matrix_power
+from numpy.linalg import matrix_power, inv
 
 from geometry_msgs.msg import PoseStamped, Pose, Vector3, Quaternion
 from nav_msgs.msg import Odometry
@@ -22,24 +22,9 @@ class linearMPC():
 
         self.rotorPub = rospy.Publisher( "command/motor_speed", Actuators, queue_size=1)
 
-        #    X =          [x, y, z, | xd, yd, zd, | p, q, r, | pd, qd, rd]
-        self.x = np.array([[0], [0], [0], [0], [0], [0], [0], [0], [0], [0], [0], [0]])
-
-        #    X_dot =          [xd, yd, zd, xdd, ydd, zdd, pd, qd, rd, pdd, qdd, rdd]
-        self.x_dot = np.array([[0], [0], [0], [0], [0], [0], [0], [0], [0], [0], [0], [0]])
-
-        #    U =          [T, R, P, Y]
-        self.u = np.array([[0], [0], [0], [0]])
-
-        #    Y =          [x, y, z] ##Here only position is given as reference.
-        # self.y = np.array([[0], [0], [0]])
-
-        self.dt = 0.05 # delta tile
-
-        self.g = -9.81 # G
-
-        self.N = 25 # Control Horizon
-
+        self.x = np.zeros((12,1)) # X = [x, y, z, | xd, yd, zd, | roll, pitch, yaw | p, q, r]^T
+        self.dt = 0.05 # delta time
+        self.g = 9.81 # abs value of g
         self.M = 25 # Prediction Horizon
 
         self.firstOdomCallback = False
@@ -104,7 +89,7 @@ class linearMPC():
             inp_r[2][i] = Kf[i]*L[i]*cos(ang[i])*(-1)
             inp_r[3][i] = Km[i]*dir[i]*(-1)
 
-        self.r_inp = inp_r.T @ np.linalg.inv(inp_r @ inp_r.T)
+        self.r_inp = inp_r.T @ inv(inp_r @ inp_r.T)
 
         dt = self.dt
         m = self.mass
@@ -113,16 +98,11 @@ class linearMPC():
         Jy = self.Jy
         Jz = self.Jz
 
-        Jx = 1
-        Jy = 1
-        Jz = 1
-
-
         self.A = np.array([ [ 1, 0, 0, dt, 0, 0, 0, 0, 0, 0, 0, 0],
                             [ 0, 1, 0, 0, dt, 0, 0, 0, 0, 0, 0, 0],
                             [ 0, 0, 1, 0, 0, dt, 0, 0, 0, 0, 0, 0],
-                            [ 0, 0, 0, 1, 0, 0, 0, -g*dt, 0, 0, 0, 0],
-                            [ 0, 0, 0, 0, 1, 0, +g*dt, 0, 0, 0, 0, 0],
+                            [ 0, 0, 0, 1, 0, 0, 0, +g*dt, 0, 0, 0, 0],
+                            [ 0, 0, 0, 0, 1, 0, -g*dt, 0, 0, 0, 0, 0],
                             [ 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
                             [ 0, 0, 0, 0, 0, 0, 1, 0, 0, dt, 0, 0],
                             [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
@@ -136,7 +116,7 @@ class linearMPC():
                             [ 0, 0, 0, 0],
                             [ 0, 0, 0, 0],
                             [ 0, 0, 0, 0],
-                            [ dt, 0, 0, 0],
+                            [ -dt, 0, 0, 0],
                             [ 0, 0, 0, 0],
                             [ 0, dt/Jx, 0, 0],
                             [ 0, 0, 0, 0],
@@ -150,8 +130,8 @@ class linearMPC():
                             [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                             [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                             [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                            [ 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-                            [ 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
+                            [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                            [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                             [ 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
                             [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                             [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -187,8 +167,8 @@ class linearMPC():
             uTt.append([self.uT])
 
             #upper and lower bounds on dU
-            uub.append([np.array( [[10],[10],[10],[10]] ) ])
-            ulb.append([-1*np.array( [[10],[10],[10],[10]] ) ])
+            uub.append([np.array( [[10],[1],[1],[1]] ) ])
+            ulb.append([-1*np.array( [[10],[1],[1],[1]] ) ])
 
 
 
@@ -199,40 +179,13 @@ class linearMPC():
         self.dUub = np.array(np.bmat(uub))
         self.dUlb = np.array(np.bmat(ulb))
 
-        # print("A = ")
-        # print(self.A)
-        # print("Shape of A = ", self.A.shape)
-        # print("B = ")
-        # print(self.B)
-        # print("Shape of B = ", self.B.shape)
-        # print("C = ")
-        # print(self.C)
-        # print("Shape of c = ", self.C.shape)
-        # print("Acap = ")
-        # print(self.Acap)
-        # print("Shape of Acap = ", self.Acap.shape)
-        # print("Bcap = ")
-        # print(self.Bcap)
-        # print("Shape of Bcap = ", self.Bcap.shape)
-        # print("Ccap = ")
-        # print(self.Ccap)
-        # print("Shape of Ccap = ", self.Ccap.shape)
-        # print("UT = ")
-        # print(self.UT)
-        # print("Shape of UT = ", self.UT.shape)
-
     def odomCallback(self, data):
         
-        # print("HEYYUAGSDJASDA")
-
         self.firstOdomCallback = True
         self.currPos = np.array([data.pose.pose.position.x, data.pose.pose.position.y, data.pose.pose.position.z])
         self.currVel = np.array([data.twist.twist.linear.x, data.twist.twist.linear.y, data.twist.twist.linear.z])
         self.currAtt = np.array(euler_from_quaternion([data.pose.pose.orientation.x, data.pose.pose.orientation.y, data.pose.pose.orientation.z, data.pose.pose.orientation.w]))
         self.currAng = np.array([data.twist.twist.angular.x, data.twist.twist.angular.y, data.twist.twist.angular.z])
-
-        # print("self X = ", self.x)
-        # print("currPose = ", self.currPos)
 
         self.x[0][0] = self.currPos[0]
         self.x[1][0] = self.currPos[1]
@@ -254,15 +207,11 @@ class linearMPC():
 
         self.xT = np.array([[self.desPos[0]], [self.desPos[1]], [self.desPos[2]], [0], [0], [0], [0], [0], [self.desAtt[2]], [0], [0], [0]])
 
-        # print("self xT", self.xT)
-
     def publish(self):
 
         rospy.loginfo("Starting MPC controller")
 
         dU = cp.Variable(4*self.M, 1)
-
-        # UT = cp.Constant(self.UT)
         Acap = cp.Constant(self.Acap)
         Bcap = cp.Constant(self.Bcap)
         Ccap = cp.Constant(self.Ccap)
@@ -270,51 +219,30 @@ class linearMPC():
         Qy = np.eye(12*self.M)
         Qu = np.eye(4*self.M)
 
-        # print("UT SHAPE = ",self.UT.shape)
-        # print("UTlb SHAPE = ",self.UTlb.shape)
-        # print("UTub SHAPE = ",self.UTub.shape)
-
         while(not rospy.is_shutdown()):
 
-            dx = cp.Constant(self.x - self.xT)
-
-            print("dx = ", dx)
-
-            # print("dx = ", dx)
+            dx = cp.Constant(self.xT - self.x)
 
             dX = Acap@dx + Bcap@dU
             dY = Ccap@dX
 
             cost = cp.Minimize( 1*cp.quad_form(dY, Qy) + 1*cp.quad_form(dU, Qu) )
-            # cost = cp.Minimize( 10*cp.norm(dY) + 0.1*cp.norm(dU) )
-            # const = [self.UTlb - UT <= dU , dU <= self.UTub - UT]
             const = [self.dUlb <= dU , dU <= self.dUub]
 
-
-
             prob = cp.Problem(cost, const)
-            # print("Prob is DCP? :", prob.is_dcp())
 
             result = prob.solve()
-            print("dX = ", dX)
-            print("dY = ", dY)
-            print("dU = ", [dU.value[0][0], dU.value[1][0], dU.value[2][0], dU.value[3][0]])
-            
-            dUop = np.array(dU.value)
 
+            dUop = np.array(dU.value)
             uOptimal = self.uT + np.array([[dUop[0][0]], [dUop[1][0]], [dUop[2][0]], [dUop[3][0]]])
 
             self.cvtRotorSpeed(uOptimal)
-
             self.rate.sleep()
 
     def cvtRotorSpeed(self, u):
-        
-        print("optimal u = ", u)
 
         Omg_sq = self.r_inp @ u
 
-        # print("Omg_sq  =", Omg_sq)
         for i in range(self.no_of_rotors):
             if Omg_sq[i][0] < 0:
                 Omg_sq[i][0] = 0 
@@ -322,8 +250,6 @@ class linearMPC():
                 Omg_sq[i][0] = 838**2
             
         Omg = np.sqrt(Omg_sq)
-
-        print("Omg = ", Omg)
 
         actuatorMsg = Actuators(angular_velocities=[ Omg[0][0], Omg[1][0], Omg[2][0], Omg[3][0]])
 
