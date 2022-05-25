@@ -130,8 +130,8 @@ class linearMPC():
                             [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                             [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                             [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                            [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                            [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                            [ 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+                            [ 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
                             [ 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
                             [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                             [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -167,8 +167,8 @@ class linearMPC():
             uTt.append([self.uT])
 
             #upper and lower bounds on dU
-            uub.append([np.array( [[10],[1],[1],[1]] ) ])
-            ulb.append([-1*np.array( [[10],[1],[1],[1]] ) ])
+            uub.append([np.array( [[10],[10],[10],[10]] ) ])
+            ulb.append([-1*np.array( [[3],[10],[10],[10]] ) ])
 
 
 
@@ -235,12 +235,16 @@ class linearMPC():
 
             dUop = np.array(dU.value)
             uOptimal = self.uT + np.array([[dUop[0][0]], [dUop[1][0]], [dUop[2][0]], [dUop[3][0]]])
+            dXk = Acap.value@dx.value + Bcap.value@dUop
+            print("dx[roll] = ", dXk[6][0])
+            print("dx[pitch] = ", dXk[7][0])
 
             self.cvtRotorSpeed(uOptimal)
             self.rate.sleep()
 
     def cvtRotorSpeed(self, u):
 
+        print("U = ", u)
         Omg_sq = self.r_inp @ u
 
         for i in range(self.no_of_rotors):
