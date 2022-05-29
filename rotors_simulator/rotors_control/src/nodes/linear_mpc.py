@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from math import sin, cos
+from math import pi, sin, cos
 import rospy
 import numpy as np
 import cvxpy as cp
@@ -85,11 +85,16 @@ class linearMPC():
 
         for i in range(self.no_of_rotors):
             inp_r[0][i] = Kf[i]
-            inp_r[1][i] = Kf[i]*L[i]*sin(ang[i])
+            inp_r[1][i] = Kf[i]*L[i]*sin(ang[i])*(1)
             inp_r[2][i] = Kf[i]*L[i]*cos(ang[i])*(-1)
-            inp_r[3][i] = Km[i]*dir[i]*(-1)
+            inp_r[3][i] = (Km[i]/Kf[i])*dir[i]
 
         self.r_inp = inp_r.T @ inv(inp_r @ inp_r.T)
+
+        print("inp_r", inp_r)
+
+        print("r_inp", self.r_inp)
+
 
         dt = self.dt
         m = self.mass
@@ -116,7 +121,7 @@ class linearMPC():
                             [ 0, 0, 0, 0],
                             [ 0, 0, 0, 0],
                             [ 0, 0, 0, 0],
-                            [ -dt, 0, 0, 0],
+                            [ dt, 0, 0, 0],
                             [ 0, 0, 0, 0],
                             [ 0, dt/Jx, 0, 0],
                             [ 0, 0, 0, 0],
@@ -137,6 +142,22 @@ class linearMPC():
                             [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                             [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]])
 
+        self.z = np.array([ [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                            [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                            [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                            [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                            [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                            [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                            [ 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+                            [ 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
+                            [ 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+                            [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                            [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                            [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]])
+
+        self.MG = np.zeros((12,1))
+        self.MG[5][0] = -1*abs(g)*dt
+
         self.xT = np.array([[self.currPos[0]], [self.currPos[1]], [self.currPos[2]], [0], [0], [0], [self.currAtt[0]], [self.currAtt[1]], [self.currAtt[2]], [0], [0], [0]])
         self.uT = np.array([[abs(m*g)], [0], [0], [0]])        
 
@@ -147,6 +168,15 @@ class linearMPC():
 
         uub = []
         ulb = []
+        mgt = []
+        anglb = []
+        angub = []
+        zt = []
+
+        angB = np.zeros((12,1))
+        angB[6][0] = pi/2
+        angB[7][0] = pi/6
+        angB[8][0] = pi
         
         for i in range(self.M):
             At.append([matrix_power(self.A, i)])
@@ -165,10 +195,14 @@ class linearMPC():
             Bt.append(Btt)
             Ct.append(Ctt)
             uTt.append([self.uT])
+            zt.append(self.z)
 
             #upper and lower bounds on dU
-            uub.append([np.array( [[10],[10],[10],[10]] ) ])
-            ulb.append([-1*np.array( [[3],[10],[10],[10]] ) ])
+            uub.append([np.array( [[10],[1],[1],[10]] ) ])
+            ulb.append([-1*np.array( [[3],[1],[1],[10]] ) ])
+            angub.append([ angB ])
+            anglb.append([-1*angB ])
+            mgt.append([self.MG])
 
 
 
@@ -178,6 +212,13 @@ class linearMPC():
 
         self.dUub = np.array(np.bmat(uub))
         self.dUlb = np.array(np.bmat(ulb))
+        self.MGcap = np.array(np.bmat(mgt))
+
+        self.angUB = np.array(np.bmat(angub))
+        self.angLB = np.array(np.bmat(anglb))
+
+        self.Zcap = np.array(np.bmat(zt))
+
 
     def odomCallback(self, data):
         
@@ -221,19 +262,20 @@ class linearMPC():
 
         while(not rospy.is_shutdown()):
 
-            dx = cp.Constant(self.xT - self.x)
+            dx = cp.Constant(self.x - self.xT)
 
-            dX = Acap@dx + Bcap@dU
+            dX = Acap@dx + Bcap@dU #+ self.MGcap
             dY = Ccap@dX
 
-            cost = cp.Minimize( 1*cp.quad_form(dY, Qy) + 1*cp.quad_form(dU, Qu) )
-            const = [self.dUlb <= dU , dU <= self.dUub]
+            cost = cp.Minimize( 10*cp.quad_form(dY, Qy) + 0.1*cp.quad_form(dU, Qu) )
+            const = [self.dUlb <= dU , dU <= self.dUub]#, self.angLB <= self.Zcap@(Acap@self.x + dX), self.Zcap@(Acap@self.x + dX) <= self.angUB]
 
             prob = cp.Problem(cost, const)
 
             result = prob.solve()
 
             dUop = np.array(dU.value)
+            print("dU = ", np.array([[dUop[0][0]], [dUop[1][0]], [dUop[2][0]], [dUop[3][0]]]))
             uOptimal = self.uT + np.array([[dUop[0][0]], [dUop[1][0]], [dUop[2][0]], [dUop[3][0]]])
             dXk = Acap.value@dx.value + Bcap.value@dUop
             print("dx[roll] = ", dXk[6][0])
